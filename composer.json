@@ -1,0 +1,17 @@
+{
+    "name": "celke/celke",
+    "autoload": {
+        "psr-4": {
+            "Celke\\Celke\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Celke",
+            "email": "cesar@celke.com.br"
+        }
+    ],
+    "require": {
+        "vlucas/phpdotenv": "^5.5"
+    }
+}
