@@ -7,8 +7,134 @@ require 'v_ambiente/autoload.php';
 $dotenv = Dotenv\Dotenv::createUnsafeImmutable(__DIR__); // Carrega as variáveis de ambiente de forma insegura (não recomendado para produção)
 $dotenv->load();
 
-// Função para autenticar e obter o token OAuth2
 function getAccessToken($client_id, $client_secret) {
+    $url = "https://oauth.hm.bb.com.br/oauth/token"; 
+    $auth = base64_encode("$client_id:$client_secret");
+    $data = [
+        "grant_type" => "client_credentials",
+        "scope" => "cobrancas.boletos-info cobrancas.boletos-requisicao"
+    ];
+    $options = [
+        "http" => [
+            "header" => "Authorization: Basic $auth\r\n" .
+                        "Content-Type: application/x-www-form-urlencoded\r\n",
+            "method" => "POST",
+            "content" => http_build_query($data),
+        ]
+    ];
+    $context = stream_context_create($options);
+    $response = file_get_contents($url, false, $context);
+    $token = json_decode($response, true);
+    return $token['access_token'];
+}
+
+function criarBoleto($token, $app_key) {
+    $url = "https://api.hm.bb.com.br/cobrancas/v2/boletos?gw-dev-app-key=$app_key";
+    $dataEmissao = date('d.m.Y');
+    $dataVencimento = date('d.m.Y', strtotime($dataEmissao . ' + 15 days'));
+    $data = [
+        "numeroConvenio" => "3128557",
+        "numeroCarteira" => "17",
+        "numeroVariacaoCarteira" => "35",
+        "codigoModalidade" => 1,
+        "dataEmissao" => $dataEmissao,
+        "dataVencimento" => $dataVencimento,
+        "valorOriginal" => 123.45,
+        "pagador" => [
+            "tipoInscricao" => 1,
+            "numeroInscricao" => "96050176876",
+            "nome" => "VALERIO DE AGUIAR ZORZATO",
+            "endereco" => "Rua Fictícia, 123",
+            "cep" => "01001000",
+            "cidade" => "São Paulo",
+            "bairro" => "Centro",
+            "uf" => "SP",
+            "telefone" => "11999999999"
+        ],
+        "numeroTituloBeneficiario" => "123456",
+        "codigoAceite" => "A",
+        "indicadorPix" => "S",
+        "numeroTituloCliente" => "00031285579900001149"
+    ];
+    echo "JSON Enviado:\n";
+    echo json_encode($data, JSON_PRETTY_PRINT);
+    echo "\n\n";
+    $options = [
+        "http" => [
+            "header" => "Authorization: Bearer $token\r\n" .
+                        "Content-Type: application/json\r\n",
+            "method" => "POST",
+            "content" => json_encode($data),
+            "ignore_errors" => true
+        ]
+    ];
+    $context = stream_context_create($options);
+    $response = @file_get_contents($url, false, $context);
+    if ($response === FALSE) {
+        $error = error_get_last();
+        print_r($error);
+        if (isset($http_response_header)) {
+            echo "HTTP Response Header:\n";
+            print_r($http_response_header);
+        }
+    } else {
+        return json_decode($response, true);
+    }
+}
+
+$client_id = $_SERVER['SEU_CLIENT_ID'];
+$client_secret = $_SERVER['SEU_CLIENT_SECRET'];
+$app_key = $_SERVER['APP_KEY'];
+
+$token = getAccessToken($client_id, $client_secret);
+$respostaBoleto = criarBoleto($token, $app_key);
+
+print_r($respostaBoleto);
+
+if (isset($respostaBoleto['numero'])) {
+    $linhaDigitavel = $respostaBoleto['linhaDigitavel'];
+    $codigoBarras = $respostaBoleto['codigoBarraNumerico'];
+    $codigoPix = $respostaBoleto['qrCode']['emv'];
+    echo "
+    <html>
+    <head>
+        <title>Boleto Gerado</title>
+        <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            .boleto-info { margin-bottom: 20px; }
+            .boleto-info div { margin-bottom: 10px; }
+            .boleto-info strong { display: inline-block; width: 150px; }
+            .qrcode { margin-top: 20px; }
+        </style>
+    </head>
+    <body>
+        <h1>Boleto Gerado com Sucesso</h1>
+        <div class='boleto-info'>
+            <div><strong>Codigo do PIX:</strong> $codigoPix</div>
+            <div><strong>Linha Digitável:</strong> $linhaDigitavel</div>
+            <div><strong>Código de Barras:</strong> $codigoBarras</div>
+        </div>
+    </body>
+    </html>
+    ";
+} else {
+    echo "<h1>Erro ao gerar o boleto</h1>";
+    echo "<p>Por favor, tente novamente mais tarde.</p>";
+}
+
+/*
+
+Boleto Gerado com Sucesso
+Codigo do PIX: 00020101021226920014br.gov.bcb.pix2570qrcodepix-h.bb.com.br/pix/v2/cobv/4b430a16-da56-4f2c-b3a5-4088a3c7fd6b5204000053039865406123.455802BR5925MERCEARIA MANASSES PEREIR6008BRASILIA62070503***6304EDAF
+Linha Digitável: 00190000090312855799200001148170898560000012345
+Código de Barras: 00198985600000123450000003128557990000114817
+
+
+*/
+
+
+// Função para autenticar e obter o token OAuth2
+/*function getAccessToken($client_id, $client_secret) {
     // URL do endpoint OAuth2 de autenticação no Banco do Brasil (ambiente de homologação)
     $url = "https://oauth.hm.bb.com.br/oauth/token"; 
     
@@ -76,7 +202,7 @@ function criarBoleto($token, $app_key) {
         "numeroTituloBeneficiario" => "123456",  // Número do título do beneficiário
         "codigoAceite" => "A",  // Código de aceite
         "indicadorPix" => "S",  // Indicador de geração de QR Code PIX
-        "numeroTituloCliente" => "00031285570000000001"  // Nosso Número
+        "numeroTituloCliente" => "00031285579900001147"  // Nosso Número
     ];
 
     // Exibe o JSON enviado para depuração
@@ -165,6 +291,6 @@ if (isset($respostaBoleto['numero'])) {
     // Em caso de erro, exibe uma mensagem para o cliente
     echo "<h1>Erro ao gerar o boleto</h1>";
     echo "<p>Por favor, tente novamente mais tarde.</p>";
-}
+}*/
 
 ?>
