@@ -9,7 +9,7 @@ $dotenv->load();
 
 // Função para obter o token OAuth2 (usada no código anterior)
 function getAccessToken($client_id, $client_secret) {
-    $url = "https://oauth.hm.bb.com.br/oauth/token";
+    $url = "https://oauth.bb.com.br/oauth/token";
     $auth = base64_encode("$client_id:$client_secret");
 
     $data = [
@@ -36,7 +36,7 @@ function getAccessToken($client_id, $client_secret) {
 // Função para listar boletos
 function listarBoletos($token, $app_key, $params) {
     // Endpoint da API de listagem de boletos
-    $url = "https://api.hm.bb.com.br/cobrancas/v2/boletos";
+    $url = "https://api.bb.com.br/cobrancas/v2/boletos";
 
     // Constrói a query string com os parâmetros fornecidos
     $query = http_build_query(array_merge(["gw-dev-app-key" => $app_key], $params));
@@ -75,10 +75,10 @@ $app_key = $_SERVER['APP_KEY'];                       // Sua chave de aplicaçã
 // Parâmetros da consulta (substitua com os valores reais)
 $params = [
     "indicadorSituacao" => "A",          // Boletos em ser (ou "B" para baixados/liquidados/protestados)
-    "agenciaBeneficiario" => "452",      // Número da agência do beneficiário
-    "contaBeneficiario" => "123873",     // Número da conta do beneficiário
-    "dataInicioVencimento" => "01.01.2023", // Data inicial de vencimento
-    "dataFimVencimento" => "30.12.2023"  // Data final de vencimento
+    "agenciaBeneficiario" => "3568",      // Número da agência do beneficiário
+    "contaBeneficiario" => "29859",     // Número da conta do beneficiário
+    "dataInicioVencimento" => "01.01.2020", // Data inicial de vencimento
+    "dataFimVencimento" => "23.12.2024"  // Data final de vencimento
     // Outros parâmetros podem ser adicionados aqui conforme necessário
 ];
 
